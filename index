@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Personal Hub — Life Manager</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Personal Hub">
+<meta name="theme-color" content="#1B1464">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%231B1464'/%3E%3Ctext x='90' y='115' font-size='90' text-anchor='middle' fill='%23FF6B00' font-family='Arial'%3E₹%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --saffron:#FF6B00; --saffron-light:#FFF0E5; --saffron-mid:#FFD4B3;
+  --indigo:#1B1464; --indigo-mid:#2D2A8A;
+  --gold:#F5C842; --gold-light:#FEF9E7;
+  --ivory:#FFF8F0; --ink:#1a1a2a; --slate:#4a4a6a; --mist:#9090aa; --fog:#ddddf0;
+  --white:#ffffff; --green:#00A651; --green-light:#E6F7EE;
+  --red:#E53935; --red-light:#FFEBEE; --amber:#F59E0B;
+  --blue:#2563EB; --blue-light:#EFF6FF; --purple:#7C3AED; --purple-light:#EDE9FE;
+  --bottom-nav-h:68px;
+}
+body { font-family:'DM Sans',sans-serif; background:var(--ivory); color:var(--ink); min-height:100vh; max-width:480px; margin:0 auto; position:relative; padding-bottom:var(--bottom-nav-h); }
+
+/* HEADER */
+.header { background:linear-gradient(135deg,var(--indigo) 0%,var(--indigo-mid) 60%,#3D35C0 100%); padding:calc(18px + env(safe-area-inset-top)) 20px 24px; position:relative; overflow:hidden; }
+.header::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:20px; background:var(--ivory); border-radius:20px 20px 0 0; }
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.greeting { color:rgba(255,255,255,0.7); font-size:12px; font-family:'Poppins',sans-serif; text-transform:uppercase; letter-spacing:1px; }
+.greeting-name { color:var(--white); font-family:'Poppins',sans-serif; font-size:20px; font-weight:700; line-height:1.1; margin-top:2px; }
+.greeting-name span { color:var(--gold); }
+.header-date { text-align:right; color:rgba(255,255,255,0.6); font-size:11px; font-family:'Poppins',sans-serif; }
+.header-date strong { display:block; color:var(--white); font-size:22px; font-weight:800; line-height:1; }
+.balance-strip { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px 16px; display:flex; }
+.bal-item { flex:1; text-align:center; }
+.bal-item+.bal-item { border-left:1px solid rgba(255,255,255,0.15); }
+.bal-label { font-size:10px; color:rgba(255,255,255,0.55); font-family:'Poppins',sans-serif; text-transform:uppercase; letter-spacing:.8px; margin-bottom:3px; }
+.bal-value { font-family:'Poppins',sans-serif; font-size:16px; font-weight:700; color:var(--white); }
+.bal-value.income { color:#4ade80; } .bal-value.expense { color:#f87171; } .bal-value.saved { color:var(--gold); }
+
+/* BOTTOM NAV */
+.bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; height:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom); background:var(--white); border-top:1px solid var(--fog); display:flex; align-items:center; justify-content:space-around; z-index:100; }
+.nav-btn { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:8px 8px; border-radius:12px; transition:all .15s; flex:1; border:none; background:none; }
+.nav-btn .nav-icon { font-size:19px; line-height:1; }
+.nav-btn .nav-label { font-size:9.5px; font-family:'Poppins',sans-serif; font-weight:500; color:var(--mist); letter-spacing:.3px; }
+.nav-btn.active .nav-label { color:var(--saffron); font-weight:700; }
+
+/* CONTENT */
+.content { padding:16px 16px 0; }
+.view { display:none; } .view.active { display:block; }
+
+/* SEC HEADER */
+.sec-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sec-title { font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:var(--indigo); }
+.sec-sub { font-size:11px; color:var(--mist); margin-top:1px; }
+
+/* QUICK ADD */
+.quick-add { background:var(--white); border-radius:16px; border:1.5px solid var(--fog); padding:14px; margin-bottom:12px; display:flex; gap:10px; align-items:center; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+.quick-add input { flex:1; border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--ink); background:transparent; }
+.quick-add input::placeholder { color:var(--mist); }
+.quick-add-btn { background:var(--saffron); color:white; border:none; border-radius:10px; width:36px; height:36px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; }
+.quick-add-btn:hover { background:#e05500; transform:scale(1.05); }
+
+/* TASK */
+.task-card { background:var(--white); border-radius:14px; padding:13px 14px; margin-bottom:8px; display:flex; align-items:flex-start; gap:12px; border:1px solid var(--fog); box-shadow:0 1px 6px rgba(0,0,0,0.03); }
+.task-card.done { opacity:.6; }
+.task-card.done .task-text { text-decoration:line-through; color:var(--mist); }
+.check-ring { width:22px; height:22px; border-radius:50%; border:2px solid var(--fog); flex-shrink:0; margin-top:1px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; font-size:11px; color:white; }
+.check-ring.checked { background:var(--green); border-color:var(--green); }
+.task-body { flex:1; }
+.task-text { font-size:14px; font-weight:500; margin-bottom:5px; line-height:1.3; }
+.task-chips { display:flex; gap:5px; flex-wrap:wrap; }
+.chip { font-size:10px; font-family:'Poppins',sans-serif; font-weight:600; padding:2px 8px; border-radius:20px; letter-spacing:.3px; text-transform:uppercase; }
+.chip-work { background:#EEF2FF; color:#4338CA; }
+.chip-home { background:var(--saffron-light); color:var(--saffron); }
+.chip-health { background:var(--green-light); color:var(--green); }
+.chip-finance { background:var(--gold-light); color:#B45309; }
+.chip-date { background:var(--fog); color:var(--mist); font-weight:500; }
+.chip-overdue { background:var(--red-light); color:var(--red); }
+.task-del { background:none; border:none; color:var(--fog); font-size:16px; cursor:pointer; padding:2px 4px; border-radius:6px; transition:all .1s; line-height:1; flex-shrink:0; }
+.task-del:hover { background:var(--red-light); color:var(--red); }
+
+/* FILTER PILLS */
+.filter-row { display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; scrollbar-width:none; }
+.filter-row::-webkit-scrollbar { display:none; }
+.fpill { font-family:'Poppins',sans-serif; font-size:11px; font-weight:600; padding:5px 14px; border-radius:20px; border:1.5px solid var(--fog); background:var(--white); color:var(--mist); cursor:pointer; white-space:nowrap; transition:all .15s; }
+.fpill.active { background:var(--indigo); color:white; border-color:var(--indigo); }
+
+/* TASK EXTRAS */
+.task-extras { background:var(--white); border-radius:14px; border:1px solid var(--fog); padding:12px 14px; margin-bottom:14px; display:flex; gap:8px; flex-wrap:wrap; }
+.mini-select { font-family:'DM Sans',sans-serif; font-size:12px; padding:6px 10px; border:1px solid var(--fog); border-radius:8px; outline:none; background:var(--ivory); color:var(--ink); cursor:pointer; flex:1; min-width:100px; }
+
+/* REMINDERS */
+.reminder-card { background:var(--white); border-radius:14px; padding:14px; margin-bottom:8px; display:flex; align-items:center; gap:13px; border-left:4px solid var(--saffron); box-shadow:0 1px 6px rgba(0,0,0,0.04); }
+.reminder-card.past { border-left-color:var(--mist); opacity:.65; }
+.reminder-card.soon { border-left-color:var(--gold); }
+.rem-icon { width:40px; height:40px; border-radius:12px; background:var(--saffron-light); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.rem-body { flex:1; }
+.rem-title { font-size:14px; font-weight:600; margin-bottom:3px; }
+.rem-time { font-size:11px; color:var(--mist); font-family:'Poppins',sans-serif; }
+.rem-time.soon-text { color:var(--amber); font-weight:600; }
+.rem-badge { font-size:10px; font-family:'Poppins',sans-serif; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.5px; }
+.badge-soon { background:var(--gold-light); color:#B45309; }
+.badge-past { background:var(--fog); color:var(--mist); }
+.badge-upcoming { background:var(--saffron-light); color:var(--saffron); }
+
+/* EXPENSES */
+.expense-card { background:var(--white); border-radius:14px; padding:13px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; border:1px solid var(--fog); box-shadow:0 1px 6px rgba(0,0,0,0.03); }
+.exp-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.exp-info { flex:1; }
+.exp-name { font-size:14px; font-weight:600; margin-bottom:2px; }
+.exp-meta { font-size:11px; color:var(--mist); }
+.exp-amount { font-family:'Poppins',sans-serif; font-size:15px; font-weight:700; flex-shrink:0; }
+.exp-amount.neg { color:var(--red); } .exp-amount.pos { color:var(--green); }
+.cat-kirana{background:#FEF9C3;} .cat-transport{background:#DBEAFE;} .cat-emi{background:#EEF2FF;}
+.cat-recharge{background:#F0FDF4;} .cat-food{background:#FFF7ED;} .cat-health{background:#F0FDF4;}
+.cat-salary{background:#F0FDF4;} .cat-other{background:var(--fog);}
+
+/* RECURRING PAYMENTS */
+.recur-card { background:var(--white); border-radius:14px; padding:14px; margin-bottom:8px; border:1px solid var(--fog); box-shadow:0 1px 6px rgba(0,0,0,0.03); }
+.recur-top { display:flex; align-items:center; gap:12px; }
+.recur-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.recur-info { flex:1; }
+.recur-name { font-size:14px; font-weight:600; }
+.recur-meta { font-size:11px; color:var(--mist); margin-top:2px; }
+.recur-right { text-align:right; }
+.recur-amount { font-family:'Poppins',sans-serif; font-size:16px; font-weight:700; color:var(--red); }
+.recur-freq { font-size:10px; color:var(--mist); font-family:'Poppins',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.recur-due-strip { margin-top:10px; padding-top:10px; border-top:1px solid var(--fog); display:flex; justify-content:space-between; align-items:center; }
+.recur-due-label { font-size:11px; color:var(--mist); }
+.recur-due-date { font-family:'Poppins',sans-serif; font-size:12px; font-weight:700; }
+.recur-due-date.urgent { color:var(--red); }
+.recur-due-date.soon2 { color:var(--amber); }
+.recur-due-date.ok { color:var(--green); }
+.recur-status { font-size:10px; font-family:'Poppins',sans-serif; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:uppercase; }
+.status-paid { background:var(--green-light); color:var(--green); }
+.status-due { background:var(--red-light); color:var(--red); }
+.status-upcoming { background:var(--gold-light); color:#B45309; }
+
+/* FINANCE */
+.bachat-hero { background:linear-gradient(135deg,var(--saffron) 0%,#FF9A3C 100%); border-radius:18px; padding:20px; margin-bottom:16px; color:white; position:relative; overflow:hidden; }
+.bachat-hero::after { content:'₹'; position:absolute; right:-8px; bottom:-20px; font-size:120px; font-weight:800; color:rgba(255,255,255,0.08); font-family:'Poppins',sans-serif; line-height:1; }
+.bachat-label { font-size:11px; opacity:.8; font-family:'Poppins',sans-serif; text-transform:uppercase; letter-spacing:1px; }
+.bachat-amount { font-family:'Poppins',sans-serif; font-size:34px; font-weight:800; letter-spacing:-1px; margin:4px 0 12px; }
+.bachat-row { display:flex; gap:12px; }
+.bachat-stat { flex:1; background:rgba(255,255,255,0.15); border-radius:10px; padding:10px 12px; }
+.bachat-stat-label { font-size:10px; opacity:.75; font-family:'Poppins',sans-serif; margin-bottom:3px; }
+.bachat-stat-val { font-family:'Poppins',sans-serif; font-size:15px; font-weight:700; }
+.budget-item { background:var(--white); border-radius:14px; padding:14px; margin-bottom:8px; border:1px solid var(--fog); }
+.budget-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.budget-cat-name { font-size:13px; font-weight:600; display:flex; align-items:center; gap:7px; }
+.budget-amounts { font-family:'Poppins',sans-serif; font-size:12px; color:var(--mist); }
+.budget-amounts strong { color:var(--ink); }
+.budget-track { height:6px; background:var(--fog); border-radius:20px; overflow:hidden; }
+.budget-fill { height:100%; border-radius:20px; transition:width .5s ease; }
+
+/* CALENDAR */
+.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.cal-month { font-family:'Poppins',sans-serif; font-size:17px; font-weight:700; color:var(--indigo); }
+.cal-arrow { background:var(--white); border:1.5px solid var(--fog); border-radius:10px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:all .15s; }
+.cal-arrow:hover { background:var(--indigo); color:white; border-color:var(--indigo); }
+.cal-grid { background:var(--white); border-radius:16px; border:1px solid var(--fog); overflow:hidden; margin-bottom:16px; }
+.cal-dow { display:grid; grid-template-columns:repeat(7,1fr); background:var(--indigo); }
+.cal-dow-cell { text-align:center; padding:9px 0; font-family:'Poppins',sans-serif; font-size:10px; font-weight:700; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:.5px; }
+.cal-days { display:grid; grid-template-columns:repeat(7,1fr); }
+.cal-day { min-height:52px; padding:5px 3px 3px; border-right:1px solid var(--fog); border-bottom:1px solid var(--fog); cursor:pointer; transition:background .1s; position:relative; }
+.cal-day:hover { background:var(--saffron-light); }
+.cal-day.other-month { opacity:.35; }
+.cal-day.today { background:var(--indigo); }
+.cal-day.today .cal-day-num { color:white; font-weight:800; }
+.cal-day.selected { background:var(--saffron-light); outline:2px solid var(--saffron); outline-offset:-2px; }
+.cal-day-num { font-family:'Poppins',sans-serif; font-size:12px; font-weight:600; color:var(--ink); text-align:center; margin-bottom:3px; display:block; }
+.cal-dots { display:flex; gap:2px; flex-wrap:wrap; justify-content:center; padding:0 2px; }
+.cal-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.dot-task { background:var(--indigo); }
+.dot-reminder { background:var(--saffron); }
+.dot-recur { background:var(--red); }
+
+/* CALENDAR DAY DETAIL */
+.cal-detail { background:var(--white); border-radius:16px; border:1px solid var(--fog); padding:16px; margin-bottom:16px; }
+.cal-detail-title { font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; color:var(--indigo); margin-bottom:12px; }
+.cal-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--fog); }
+.cal-item:last-child { border-bottom:none; }
+.cal-item-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.cal-item-text { flex:1; font-size:13px; font-weight:500; }
+.cal-item-sub { font-size:11px; color:var(--mist); }
+.cal-item-badge { font-size:10px; font-family:'Poppins',sans-serif; font-weight:700; padding:2px 7px; border-radius:20px; text-transform:uppercase; }
+
+/* MODAL */
+.modal-bg { position:fixed; inset:0; background:rgba(10,10,40,0.5); z-index:200; display:none; align-items:flex-end; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--white); border-radius:24px 24px 0 0; padding:24px 20px 32px; width:100%; max-width:480px; animation:slideUp .25s ease; max-height:90vh; overflow-y:auto; }
+@keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-handle { width:36px; height:4px; background:var(--fog); border-radius:2px; margin:0 auto 20px; }
+.modal-title { font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:var(--indigo); margin-bottom:18px; }
+.form-field { margin-bottom:12px; }
+.form-lbl { font-size:11px; font-family:'Poppins',sans-serif; font-weight:600; color:var(--mist); text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; display:block; }
+.inp { font-family:'DM Sans',sans-serif; font-size:14px; padding:10px 13px; border:1.5px solid var(--fog); border-radius:10px; outline:none; background:var(--ivory); color:var(--ink); width:100%; transition:border-color .15s; }
+.inp:focus { border-color:var(--saffron); }
+.modal-actions { display:flex; gap:8px; margin-top:18px; }
+.btn-main { flex:1; background:var(--saffron); color:white; border:none; border-radius:12px; padding:13px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:700; cursor:pointer; }
+.btn-main:hover { background:#e05500; }
+.btn-cancel { background:var(--fog); color:var(--slate); border:none; border-radius:12px; padding:13px 18px; font-family:'Poppins',sans-serif; font-size:14px; font-weight:600; cursor:pointer; }
+
+/* EMPTY */
+.empty-state { text-align:center; padding:40px 20px; }
+.empty-emoji { font-size:48px; margin-bottom:10px; }
+.empty-text { font-family:'Poppins',sans-serif; font-size:14px; color:var(--mist); font-weight:500; }
+
+/* CHART */
+.chart-wrap { display:flex; align-items:flex-end; gap:5px; height:64px; padding:0 2px; }
+.chart-bar { flex:1; border-radius:5px 5px 0 0; background:var(--saffron-mid); min-height:4px; cursor:pointer; }
+.chart-bar:hover,.chart-bar.today { background:var(--saffron); }
+.chart-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--mist); font-family:'Poppins',sans-serif; padding:4px 2px 0; }
+
+/* TOGGLE ROW */
+.toggle-row { display:flex; background:var(--fog); border-radius:10px; padding:3px; }
+.toggle-opt { flex:1; text-align:center; padding:7px; border-radius:8px; font-family:'Poppins',sans-serif; font-size:12px; font-weight:600; color:var(--mist); cursor:pointer; transition:all .15s; }
+.toggle-opt.active { background:var(--white); color:var(--indigo); box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+
+/* UPI CATS */
+.upi-cats { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:4px; }
+.upi-cats::-webkit-scrollbar { display:none; }
+.upi-cat { display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; flex-shrink:0; }
+.upi-cat-icon { width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:21px; border:2px solid transparent; transition:all .15s; }
+.upi-cat.selected .upi-cat-icon { border-color:var(--saffron); box-shadow:0 0 0 3px var(--saffron-light); }
+.upi-cat-lbl { font-size:10px; font-family:'Poppins',sans-serif; font-weight:600; color:var(--slate); }
+.amount-input-wrap { display:flex; align-items:center; border:2px solid var(--saffron); border-radius:12px; padding:10px 14px; background:var(--saffron-light); gap:6px; margin-bottom:12px; }
+.amount-rupee { font-family:'Poppins',sans-serif; font-size:22px; font-weight:700; color:var(--saffron); }
+.amount-input { flex:1; border:none; background:transparent; font-family:'Poppins',sans-serif; font-size:22px; font-weight:700; color:var(--ink); outline:none; width:100%; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="greeting">Hello 👋</div>
+      <div class="greeting-name">Your <span>Personal Hub</span></div>
+    </div>
+    <div class="header-date">
+      <strong id="hdrDay"></strong>
+      <span id="hdrMonYear"></span>
+    </div>
+  </div>
+  <div class="balance-strip">
+    <div class="bal-item"><div class="bal-label">Income</div><div class="bal-value income" id="hdr-income">₹0</div></div>
+    <div class="bal-item"><div class="bal-label">Spent</div><div class="bal-value expense" id="hdr-expense">₹0</div></div>
+    <div class="bal-item"><div class="bal-label">Saved</div><div class="bal-value saved" id="hdr-saved">₹0</div></div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- TASKS -->
+  <div class="view active" id="view-tasks">
+    <div class="sec-header">
+      <div><div class="sec-title">My Tasks ✅</div><div class="sec-sub" id="task-count-label">Loading…</div></div>
+    </div>
+    <div class="quick-add">
+      <input id="taskInput" placeholder="Type a task and press Enter…" onkeydown="if(event.key==='Enter')addTask()">
+      <button class="quick-add-btn" onclick="addTask()">+</button>
+    </div>
+    <div class="task-extras">
+      <select class="mini-select" id="taskCat">
+        <option value="work">💼 Work</option>
+        <option value="home">🏠 Home</option>
+        <option value="health">❤️ Health</option>
+        <option value="finance">💰 Finance</option>
+      </select>
+      <input class="mini-select" type="date" id="taskDue" style="cursor:pointer">
+    </div>
+    <div class="filter-row">
+      <div class="fpill active" onclick="filterTasks('all',this)">All</div>
+      <div class="fpill" onclick="filterTasks('active',this)">Pending</div>
+      <div class="fpill" onclick="filterTasks('done',this)">Done</div>
+    </div>
+    <div id="taskList"></div>
+  </div>
+
+  <!-- REMINDERS -->
+  <div class="view" id="view-reminders">
+    <div class="sec-header">
+      <div><div class="sec-title">Reminders 🔔</div><div class="sec-sub">Never miss anything important</div></div>
+      <button class="quick-add-btn" onclick="openModal('reminderModal')" style="width:38px;height:38px;font-size:18px">+</button>
+    </div>
+    <div id="reminderList"></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="view" id="view-expenses">
+    <div class="sec-header">
+      <div><div class="sec-title">Expenses 💸</div><div class="sec-sub" id="exp-month-label">This month's summary</div></div>
+      <button class="quick-add-btn" onclick="openModal('expenseModal')" style="width:38px;height:38px;font-size:18px">+</button>
+    </div>
+    <div class="filter-row">
+      <div class="fpill active" onclick="filterExp('all',this)">All</div>
+      <div class="fpill" onclick="filterExp('Grocery',this)">🛒 Grocery</div>
+      <div class="fpill" onclick="filterExp('Food',this)">🍛 Food</div>
+      <div class="fpill" onclick="filterExp('EMI',this)">🏦 EMI</div>
+      <div class="fpill" onclick="filterExp('Transport',this)">🚗 Travel</div>
+      <div class="fpill" onclick="filterExp('Recharge',this)">📱 Recharge</div>
+    </div>
+    <div id="expenseList"></div>
+  </div>
+
+  <!-- RECURRING PAYMENTS -->
+  <div class="view" id="view-recurring">
+    <div class="sec-header">
+      <div><div class="sec-title">Recurring 🔁</div><div class="sec-sub" id="recur-sub">Monthly auto-payments</div></div>
+      <button class="quick-add-btn" onclick="openModal('recurModal')" style="width:38px;height:38px;font-size:18px">+</button>
+    </div>
+    <div class="filter-row">
+      <div class="fpill active" onclick="filterRecur('all',this)">All</div>
+      <div class="fpill" onclick="filterRecur('monthly',this)">Monthly</div>
+      <div class="fpill" onclick="filterRecur('yearly',this)">Yearly</div>
+      <div class="fpill" onclick="filterRecur('weekly',this)">Weekly</div>
+    </div>
+    <div id="recurList"></div>
+  </div>
+
+  <!-- FINANCE -->
+  <div class="view" id="view-finance">
+    <div class="sec-header">
+      <div><div class="sec-title">Finance 📊</div><div class="sec-sub">Budget & savings overview</div></div>
+    </div>
+    <div class="toggle-row" style="margin-bottom:16px">
+      <div class="toggle-opt active" onclick="setFinTab('overview',this)">Overview</div>
+      <div class="toggle-opt" onclick="setFinTab('budget',this)">Budget</div>
+    </div>
+
+    <!-- OVERVIEW SUB-TAB -->
+    <div id="finTab-overview">
+      <div class="bachat-hero">
+        <div class="bachat-label">Saved This Month</div>
+        <div class="bachat-amount" id="bachat-saved">₹0</div>
+        <div class="bachat-row">
+          <div class="bachat-stat"><div class="bachat-stat-label">Income 💚</div><div class="bachat-stat-val" id="bachat-income">₹0</div></div>
+          <div class="bachat-stat"><div class="bachat-stat-label">Spent 🔴</div><div class="bachat-stat-val" id="bachat-spent">₹0</div></div>
+        </div>
+      </div>
+      <div style="background:var(--white);border-radius:14px;padding:14px;margin-bottom:16px;border:1px solid var(--fog)">
+        <div style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:var(--indigo);margin-bottom:10px">Last 7 Days Spending</div>
+        <div class="chart-wrap" id="miniChart"></div>
+        <div class="chart-labels" id="chartLabels"></div>
+      </div>
+    </div>
+
+    <!-- BUDGET SUB-TAB -->
+    <div id="finTab-budget" style="display:none">
+      <div class="bachat-hero" style="background:linear-gradient(135deg,var(--indigo) 0%,var(--indigo-mid) 100%)">
+        <div class="bachat-label">Total Monthly Budget</div>
+        <div class="bachat-amount" id="budget-total">₹0</div>
+        <div class="bachat-row">
+          <div class="bachat-stat"><div class="bachat-stat-label">Used 🔴</div><div class="bachat-stat-val" id="budget-used">₹0</div></div>
+          <div class="bachat-stat"><div class="bachat-stat-label">Left 💚</div><div class="bachat-stat-val" id="budget-left">₹0</div></div>
+        </div>
+      </div>
+      <div class="sec-header" style="margin-bottom:10px">
+        <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--indigo)">Category Budgets</div>
+        <button class="quick-add-btn" onclick="openModal('budgetModal')" style="width:34px;height:34px;font-size:13px">⚙️</button>
+      </div>
+      <div id="budgetList"></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="view" id="view-calendar">
+    <div class="cal-nav">
+      <button class="cal-arrow" onclick="changeMonth(-1)">‹</button>
+      <div class="cal-month" id="calMonthLabel"></div>
+      <button class="cal-arrow" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dow">
+        <div class="cal-dow-cell">Sun</div><div class="cal-dow-cell">Mon</div><div class="cal-dow-cell">Tue</div>
+        <div class="cal-dow-cell">Wed</div><div class="cal-dow-cell">Thu</div><div class="cal-dow-cell">Fri</div><div class="cal-dow-cell">Sat</div>
+      </div>
+      <div class="cal-days" id="calDays"></div>
+    </div>
+    <!-- Legend -->
+    <div style="display:flex;gap:14px;margin-bottom:14px;padding:0 2px">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mist)"><div class="cal-dot dot-task"></div>Task</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mist)"><div class="cal-dot dot-reminder"></div>Reminder</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mist)"><div class="cal-dot dot-recur"></div>Payment</div>
+    </div>
+    <div class="cal-detail" id="calDetail" style="display:none">
+      <div class="cal-detail-title" id="calDetailTitle"></div>
+      <div id="calDetailItems"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="switchView('tasks',this)"><span class="nav-icon">✅</span><span class="nav-label">Tasks</span></button>
+  <button class="nav-btn" onclick="switchView('reminders',this)"><span class="nav-icon">🔔</span><span class="nav-label">Reminders</span></button>
+  <button class="nav-btn" onclick="switchView('expenses',this)"><span class="nav-icon">💸</span><span class="nav-label">Expenses</span></button>
+  <button class="nav-btn" onclick="switchView('recurring',this)"><span class="nav-icon">🔁</span><span class="nav-label">Recurring</span></button>
+  <button class="nav-btn" onclick="switchView('finance',this)"><span class="nav-icon">📊</span><span class="nav-label">Finance</span></button>
+  <button class="nav-btn" onclick="switchView('calendar',this)"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span></button>
+</nav>
+
+<!-- MODAL: Reminder -->
+<div class="modal-bg" id="reminderModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔔 New Reminder</div>
+    <div class="form-field"><label class="form-lbl">What to remember?</label><input class="inp" id="rem-title" placeholder="Remind me to…"></div>
+    <div class="form-field"><label class="form-lbl">When?</label><input class="inp" type="datetime-local" id="rem-dt"></div>
+    <div class="form-field">
+      <label class="form-lbl">Category</label>
+      <select class="inp" id="rem-cat">
+        <option>💊 Medicine</option><option>📞 Make a Call</option><option>💰 Pay a Bill</option>
+        <option>🛒 Shopping</option><option>📅 Meeting</option><option>📝 Other</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('reminderModal')">Cancel</button>
+      <button class="btn-main" onclick="addReminder()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Expense -->
+<div class="modal-bg" id="expenseModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💸 Add Transaction</div>
+    <div class="toggle-row" style="margin-bottom:14px">
+      <div class="toggle-opt active" onclick="setExpType('expense',this)">Expense 🔴</div>
+      <div class="toggle-opt" onclick="setExpType('income',this)">Income 💚</div>
+    </div>
+    <div class="amount-input-wrap">
+      <span class="amount-rupee">₹</span>
+      <input class="amount-input" type="number" id="exp-amount" placeholder="0" min="0" step="1">
+    </div>
+    <div class="form-field"><label class="form-lbl">Description</label><input class="inp" id="exp-name" placeholder="What was this for?"></div>
+    <div class="form-field">
+      <label class="form-lbl">Category</label>
+      <div class="upi-cats" id="upiCats">
+        <div class="upi-cat selected" onclick="selectCat(this,'Grocery')"><div class="upi-cat-icon cat-kirana">🛒</div><div class="upi-cat-lbl">Grocery</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Food')"><div class="upi-cat-icon cat-food">🍛</div><div class="upi-cat-lbl">Food</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Transport')"><div class="upi-cat-icon cat-transport">🚗</div><div class="upi-cat-lbl">Travel</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'EMI')"><div class="upi-cat-icon cat-emi">🏦</div><div class="upi-cat-lbl">EMI</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Recharge')"><div class="upi-cat-icon cat-recharge">📱</div><div class="upi-cat-lbl">Recharge</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Health')"><div class="upi-cat-icon cat-health">💊</div><div class="upi-cat-lbl">Health</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Salary')"><div class="upi-cat-icon cat-salary">💼</div><div class="upi-cat-lbl">Salary</div></div>
+        <div class="upi-cat" onclick="selectCat(this,'Other')"><div class="upi-cat-icon cat-other">📦</div><div class="upi-cat-lbl">Other</div></div>
+      </div>
+    </div>
+    <div class="form-field"><label class="form-lbl">Date</label><input class="inp" type="date" id="exp-date"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('expenseModal')">Cancel</button>
+      <button class="btn-main" onclick="addExpense()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Recurring Payment -->
+<div class="modal-bg" id="recurModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔁 Add Recurring Payment</div>
+    <div class="form-field"><label class="form-lbl">Name</label><input class="inp" id="rec-name" placeholder="e.g. Netflix, Car EMI, Gym…"></div>
+    <div class="amount-input-wrap">
+      <span class="amount-rupee">₹</span>
+      <input class="amount-input" type="number" id="rec-amount" placeholder="0" min="0">
+    </div>
+    <div class="form-field">
+      <label class="form-lbl">Category</label>
+      <select class="inp" id="rec-cat">
+        <option value="EMI">🏦 EMI / Loan</option>
+        <option value="Recharge">📱 Recharge / Telecom</option>
+        <option value="Subscription">🎬 Subscription</option>
+        <option value="Insurance">🛡 Insurance</option>
+        <option value="Rent">🏠 Rent</option>
+        <option value="Utilities">💡 Utilities / Bills</option>
+        <option value="SIP">📈 SIP / Investment</option>
+        <option value="Other">📦 Other</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label class="form-lbl">Frequency</label>
+      <select class="inp" id="rec-freq">
+        <option value="weekly">Weekly</option>
+        <option value="monthly" selected>Monthly</option>
+        <option value="quarterly">Quarterly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <div class="form-field"><label class="form-lbl">Next Due Date</label><input class="inp" type="date" id="rec-due"></div>
+    <div class="form-field">
+      <label class="form-lbl">Auto-debit / Payment Method</label>
+      <select class="inp" id="rec-method">
+        <option>UPI Auto-debit</option><option>Credit Card</option><option>Debit Card</option><option>Net Banking</option><option>Manual</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('recurModal')">Cancel</button>
+      <button class="btn-main" onclick="addRecurring()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Budget -->
+<div class="modal-bg" id="budgetModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Set Monthly Budgets</div>
+    <div id="budgetInputs"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('budgetModal')">Cancel</button>
+      <button class="btn-main" onclick="saveBudgets()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+let S = {
+  tasks:[],reminders:[],expenses:[],recurring:[],
+  budgets:{Grocery:5000,Food:3000,Transport:2000,EMI:10000,Recharge:500,Health:2000,Other:2000}
+};
+try{const sv=localStorage.getItem('personal-hub-v2');if(sv)S={...S,...JSON.parse(sv)};}catch(e){}
+function save(){try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){}}
+
+const $=id=>document.getElementById(id);
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtINR=n=>'₹'+Math.abs(n).toLocaleString('en-IN');
+
+function seed(){
+  const d=today();
+  const nxt=(days)=>{const dt=new Date();dt.setDate(dt.getDate()+days);return dt.toISOString().split('T')[0];};
+  if(!S.tasks.length) S.tasks=[
+    {id:1,text:'Pay HDFC credit card bill',cat:'finance',due:nxt(2),done:false},
+    {id:2,text:'Buy groceries for the week',cat:'home',due:'',done:false},
+    {id:3,text:'Schedule doctor appointment',cat:'health',due:'',done:false},
+    {id:4,text:'Submit Q2 project report',cat:'work',due:d,done:true},
+  ];
+  if(!S.reminders.length){
+    S.reminders=[
+      {id:1,title:'Take morning medicine',cat:'💊 Medicine',datetime:new Date(Date.now()+3*3600000).toISOString().slice(0,16)},
+      {id:2,title:'Pay phone bill',cat:'💰 Pay a Bill',datetime:new Date(Date.now()+86400000).toISOString().slice(0,16)},
+    ];
+  }
+  if(!S.expenses.length) S.expenses=[
+    {id:1,name:'Big Bazaar Grocery',cat:'Grocery',type:'expense',amount:1840,date:d},
+    {id:2,name:'Monthly Salary',cat:'Salary',type:'income',amount:45000,date:d},
+    {id:3,name:'Ola Cab to Office',cat:'Transport',type:'expense',amount:230,date:d},
+    {id:4,name:'Jio Recharge',cat:'Recharge',type:'expense',amount:299,date:d},
+    {id:5,name:'Car Loan EMI',cat:'EMI',type:'expense',amount:8500,date:d},
+  ];
+  if(!S.recurring.length) S.recurring=[
+    {id:1,name:'Netflix',cat:'Subscription',amount:649,freq:'monthly',due:nxt(5),method:'Credit Card',paid:false},
+    {id:2,name:'Car Loan EMI',cat:'EMI',amount:8500,freq:'monthly',due:nxt(3),method:'UPI Auto-debit',paid:false},
+    {id:3,name:'Jio Recharge',cat:'Recharge',amount:299,freq:'monthly',due:nxt(12),method:'UPI Auto-debit',paid:false},
+    {id:4,name:'Term Insurance',cat:'Insurance',amount:12000,freq:'yearly',due:nxt(45),method:'Net Banking',paid:false},
+    {id:5,name:'Gym Membership',cat:'Other',amount:1500,freq:'monthly',due:nxt(8),method:'Manual',paid:false},
+    {id:6,name:'LIC SIP',cat:'SIP',amount:5000,freq:'monthly',due:nxt(1),method:'Auto-debit',paid:false},
+  ];
+  save();
+}
+
+const catMeta={
+  Grocery:{icon:'🛒',cls:'cat-kirana'},Food:{icon:'🍛',cls:'cat-food'},
+  Transport:{icon:'🚗',cls:'cat-transport'},EMI:{icon:'🏦',cls:'cat-emi'},
+  Recharge:{icon:'📱',cls:'cat-recharge'},Health:{icon:'💊',cls:'cat-health'},
+  Salary:{icon:'💼',cls:'cat-salary'},Other:{icon:'📦',cls:'cat-other'},
+  Subscription:{icon:'🎬',cls:'cat-emi'},Insurance:{icon:'🛡',cls:'cat-health'},
+  Rent:{icon:'🏠',cls:'cat-kirana'},Utilities:{icon:'💡',cls:'cat-transport'},
+  SIP:{icon:'📈',cls:'cat-recharge'},
+};
+const catChipMap={work:'chip-work',home:'chip-home',health:'chip-health',finance:'chip-finance'};
+const catLabelMap={work:'💼 Work',home:'🏠 Home',health:'❤️ Health',finance:'💰 Finance'};
+
+// ── NAVIGATION ─────────────────────────────────────────────
+function switchView(name,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  $('view-'+name).classList.add('active');
+  el.classList.add('active');
+  renderAll();
+  if(name==='calendar') renderCalendar();
+}
+function openModal(id){$(id).classList.add('open');}
+function closeModal(id){$(id).classList.remove('open');}
+
+// ── TASKS ──────────────────────────────────────────────────
+let taskFilter='all';
+function addTask(){
+  const text=$('taskInput').value.trim();
+  if(!text) return;
+  S.tasks.unshift({id:Date.now(),text,cat:$('taskCat').value,due:$('taskDue').value,done:false});
+  $('taskInput').value='';
+  save();renderTasks();
+}
+function toggleTask(id){const t=S.tasks.find(t=>t.id===id);if(t){t.done=!t.done;save();renderTasks();}}
+function deleteTask(id){S.tasks=S.tasks.filter(t=>t.id!==id);save();renderTasks();}
+function filterTasks(f,el){
+  taskFilter=f;
+  document.querySelectorAll('#view-tasks .fpill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');renderTasks();
+}
+function renderTasks(){
+  let tasks=S.tasks;
+  if(taskFilter==='active') tasks=tasks.filter(t=>!t.done);
+  if(taskFilter==='done') tasks=tasks.filter(t=>t.done);
+  const active=S.tasks.filter(t=>!t.done).length;
+  $('task-count-label').textContent=active?`${active} task${active>1?'s':''} remaining`:'All done! 🎉';
+  if(!tasks.length){$('taskList').innerHTML=`<div class="empty-state"><div class="empty-emoji">🎉</div><div class="empty-text">No tasks here<br>Time to relax!</div></div>`;return;}
+  $('taskList').innerHTML=tasks.map(t=>{
+    const overdue=t.due&&t.due<today()&&!t.done;
+    const dc=t.due?`<span class="chip ${overdue?'chip-overdue':'chip-date'}">${overdue?'⚠ ':''}${fmtDate(t.due)}</span>`:'';
+    return`<div class="task-card ${t.done?'done':''}">
+      <div class="check-ring ${t.done?'checked':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
+      <div class="task-body">
+        <div class="task-text">${t.text}</div>
+        <div class="task-chips"><span class="chip ${catChipMap[t.cat]||'chip-work'}">${catLabelMap[t.cat]||t.cat}</span>${dc}</div>
+      </div>
+      <button class="task-del" onclick="deleteTask(${t.id})">×</button>
+    </div>`;
+  }).join('');
+}
+function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});}
+
+// ── REMINDERS ─────────────────────────────────────────────
+function addReminder(){
+  const title=$('rem-title').value.trim();if(!title)return;
+  S.reminders.unshift({id:Date.now(),title,cat:$('rem-cat').value,datetime:$('rem-dt').value});
+  $('rem-title').value='';closeModal('reminderModal');save();renderReminders();
+}
+function deleteReminder(id){S.reminders=S.reminders.filter(r=>r.id!==id);save();renderReminders();}
+function renderReminders(){
+  if(!S.reminders.length){$('reminderList').innerHTML=`<div class="empty-state"><div class="empty-emoji">🔔</div><div class="empty-text">No reminders yet<br>Tap + to add one</div></div>`;return;}
+  const now=new Date();
+  $('reminderList').innerHTML=S.reminders.map(r=>{
+    const dt=r.datetime?new Date(r.datetime):null;
+    const diffH=dt?(dt-now)/3600000:null;
+    const soon=diffH!==null&&diffH>0&&diffH<24;
+    const past=diffH!==null&&diffH<0;
+    const timeStr=dt?dt.toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const badge=past?'<span class="rem-badge badge-past">Past</span>':soon?'<span class="rem-badge badge-soon">Soon</span>':'<span class="rem-badge badge-upcoming">Upcoming</span>';
+    return`<div class="reminder-card ${past?'past':soon?'soon':''}">
+      <div class="rem-icon">${r.cat.split(' ')[0]}</div>
+      <div class="rem-body"><div class="rem-title">${r.title}</div><div class="rem-time ${soon?'soon-text':''}">${timeStr}</div></div>
+      ${badge}<button class="task-del" onclick="deleteReminder(${r.id})">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ── EXPENSES ──────────────────────────────────────────────
+let expFilter='all',selectedExpCat='Grocery',expType='expense';
+function setExpType(type,el){expType=type;document.querySelectorAll('.toggle-opt').forEach(o=>o.classList.remove('active'));el.classList.add('active');}
+function selectCat(el,cat){document.querySelectorAll('.upi-cat').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');selectedExpCat=cat;}
+function addExpense(){
+  const name=$('exp-name').value.trim(),amount=parseFloat($('exp-amount').value);
+  if(!name||isNaN(amount)||amount<=0)return;
+  S.expenses.unshift({id:Date.now(),name,amount,cat:selectedExpCat,type:expType,date:$('exp-date').value||today()});
+  $('exp-name').value='';$('exp-amount').value='';closeModal('expenseModal');save();renderAll();
+}
+function deleteExpense(id){S.expenses=S.expenses.filter(e=>e.id!==id);save();renderAll();}
+function filterExp(f,el){expFilter=f;document.querySelectorAll('#view-expenses .fpill').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderExpenses();}
+function renderExpenses(){
+  let list=expFilter==='all'?S.expenses:S.expenses.filter(e=>e.cat===expFilter);
+  const ti=S.expenses.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const te=S.expenses.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  $('exp-month-label').textContent=`Spent: ${fmtINR(te)} | Earned: ${fmtINR(ti)}`;
+  if(!list.length){$('expenseList').innerHTML=`<div class="empty-state"><div class="empty-emoji">💸</div><div class="empty-text">No transactions yet<br>Tap + to add one</div></div>`;return;}
+  $('expenseList').innerHTML=list.map(e=>{
+    const m=catMeta[e.cat]||catMeta.Other;const isIn=e.type==='income';
+    return`<div class="expense-card">
+      <div class="exp-icon ${m.cls}">${m.icon}</div>
+      <div class="exp-info"><div class="exp-name">${e.name}</div><div class="exp-meta">${e.cat} · ${e.date?fmtDate(e.date):''}</div></div>
+      <div class="exp-amount ${isIn?'pos':'neg'}">${isIn?'+':'−'}${fmtINR(e.amount)}</div>
+      <button class="task-del" onclick="deleteExpense(${e.id})">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ── RECURRING ─────────────────────────────────────────────
+let recurFilter='all';
+function addRecurring(){
+  const name=$('rec-name').value.trim(),amount=parseFloat($('rec-amount').value);
+  if(!name||isNaN(amount)||amount<=0)return;
+  S.recurring.unshift({id:Date.now(),name,amount,cat:$('rec-cat').value,freq:$('rec-freq').value,due:$('rec-due').value,method:$('rec-method').value,paid:false});
+  $('rec-name').value='';$('rec-amount').value='';closeModal('recurModal');save();renderRecurring();
+}
+function deleteRecurring(id){S.recurring=S.recurring.filter(r=>r.id!==id);save();renderRecurring();}
+// Map recurring categories to expense categories (so they show correctly in Expenses/Finance)
+const recurToExpCat={EMI:'EMI',Recharge:'Recharge',Subscription:'Other',Insurance:'Other',Rent:'Other',Utilities:'Other',SIP:'Other',Other:'Other'};
+
+function advanceDate(dateStr,freq){
+  const d=new Date(dateStr+'T00:00:00');
+  if(freq==='weekly') d.setDate(d.getDate()+7);
+  else if(freq==='monthly') d.setMonth(d.getMonth()+1);
+  else if(freq==='quarterly') d.setMonth(d.getMonth()+3);
+  else if(freq==='yearly') d.setFullYear(d.getFullYear()+1);
+  return d.toISOString().split('T')[0];
+}
+
+function togglePaid(id){
+  const r=S.recurring.find(r=>r.id===id);
+  if(!r) return;
+  if(!r.paid){
+    // Marking as paid: log an expense, then roll the due date forward and reset for next cycle
+    S.expenses.unshift({
+      id:Date.now(),
+      name:r.name,
+      amount:r.amount,
+      cat:recurToExpCat[r.cat]||'Other',
+      type:'expense',
+      date:today()
+    });
+    if(r.due) r.due=advanceDate(r.due,r.freq);
+    r.lastPaid=today();
+    r.paid=false; // ready for next cycle immediately
+    save();
+    renderAll();
+    return;
+  }
+  r.paid=!r.paid;
+  save();renderRecurring();
+}
+function filterRecur(f,el){recurFilter=f;document.querySelectorAll('#view-recurring .fpill').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderRecurring();}
+
+const freqLabel={weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'};
+const catRecurIcon={EMI:'🏦',Recharge:'📱',Subscription:'🎬',Insurance:'🛡',Rent:'🏠',Utilities:'💡',SIP:'📈',Other:'📦'};
+
+function renderRecurring(){
+  let list=recurFilter==='all'?S.recurring:S.recurring.filter(r=>r.freq===recurFilter);
+  const totalMonthly=S.recurring.filter(r=>r.freq==='monthly').reduce((s,r)=>s+r.amount,0);
+  $('recur-sub').textContent=`Monthly commitment: ${fmtINR(totalMonthly)}`;
+  if(!list.length){$('recurList').innerHTML=`<div class="empty-state"><div class="empty-emoji">🔁</div><div class="empty-text">No recurring payments<br>Tap + to add one</div></div>`;return;}
+  const now=new Date();
+  $('recurList').innerHTML=list.map(r=>{
+    const due=r.due?new Date(r.due+'T00:00:00'):null;
+    const daysLeft=due?Math.ceil((due-now)/86400000):null;
+    let dueClass='ok',dueTxt=r.due?fmtDate(r.due):'—';
+    if(daysLeft!==null){
+      if(daysLeft<0)dueClass='urgent';
+      else if(daysLeft<=3)dueClass='urgent';
+      else if(daysLeft<=7)dueClass='soon2';
+    }
+    const statusBadge=r.paid?'<span class="recur-status status-paid">Paid ✓</span>':daysLeft!==null&&daysLeft<0?'<span class="recur-status status-due">Overdue</span>':daysLeft!==null&&daysLeft<=3?'<span class="recur-status status-due">Due Soon</span>':'<span class="recur-status status-upcoming">Upcoming</span>';
+    return`<div class="recur-card">
+      <div class="recur-top">
+        <div class="recur-icon" style="background:${r.paid?'var(--green-light)':'var(--saffron-light)'}">${catRecurIcon[r.cat]||'📦'}</div>
+        <div class="recur-info">
+          <div class="recur-name">${r.name}</div>
+          <div class="recur-meta">${r.cat} · ${r.method}${r.lastPaid?` · Last paid ${fmtDate(r.lastPaid)}`:''}</div>
+        </div>
+        <div class="recur-right">
+          <div class="recur-amount" style="${r.paid?'color:var(--green)':''}">₹${r.amount.toLocaleString('en-IN')}</div>
+          <div class="recur-freq">${freqLabel[r.freq]||r.freq}</div>
+        </div>
+      </div>
+      <div class="recur-due-strip">
+        <div>
+          <div class="recur-due-label">Next Due</div>
+          <div class="recur-due-date ${r.paid?'ok':dueClass}">${dueTxt}${daysLeft!==null&&!r.paid?` (${daysLeft<0?Math.abs(daysLeft)+' days overdue':daysLeft===0?'Today':daysLeft+' days left'})`:''}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${statusBadge}
+          <button onclick="togglePaid(${r.id})" style="background:var(--green-light);color:var(--green);border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-family:'Poppins',sans-serif;font-weight:700;cursor:pointer">Mark Paid</button>
+          <button class="task-del" onclick="deleteRecurring(${r.id})">×</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── FINANCE ───────────────────────────────────────────────
+const budgetCats=['Grocery','Food','Transport','EMI','Recharge','Health','Other'];
+
+function setFinTab(tab,el){
+  document.querySelectorAll('#view-finance .toggle-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  $('finTab-overview').style.display=tab==='overview'?'block':'none';
+  $('finTab-budget').style.display=tab==='budget'?'block':'none';
+}
+
+function openBudgetModal(){
+  $('budgetInputs').innerHTML=budgetCats.map(c=>`<div class="form-field"><label class="form-lbl">${catMeta[c]?.icon||''} ${c}</label><input class="inp" type="number" id="bud-${c}" value="${S.budgets[c]||0}"></div>`).join('');
+  openModal('budgetModal');
+}
+function saveBudgets(){
+  budgetCats.forEach(c=>{const v=parseFloat($('bud-'+c)?.value);if(!isNaN(v))S.budgets[c]=v;});
+  closeModal('budgetModal');save();renderFinance();
+}
+function renderFinance(){
+  const expenses=S.expenses.filter(e=>e.type==='expense');
+  const income=S.expenses.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const spent=expenses.reduce((s,e)=>s+e.amount,0);
+  const saved=income-spent;
+  $('bachat-income').textContent=fmtINR(income);
+  $('bachat-spent').textContent=fmtINR(spent);
+  $('bachat-saved').textContent=(saved>=0?'+':'−')+fmtINR(Math.abs(saved));
+  $('hdr-income').textContent=fmtINR(income);
+  $('hdr-expense').textContent=fmtINR(spent);
+  $('hdr-saved').textContent=(saved>=0?'+':'−')+fmtINR(Math.abs(saved));
+  const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toISOString().split('T')[0];});
+  const ds=days.map(d=>expenses.filter(e=>e.date===d).reduce((s,e)=>s+e.amount,0));
+  const mx=Math.max(...ds,1);
+  $('miniChart').innerHTML=ds.map((v,i)=>`<div class="chart-bar ${i===6?'today':''}" style="height:${Math.max(5,(v/mx)*100)}%" title="${fmtINR(v)}"></div>`).join('');
+  $('chartLabels').innerHTML=days.map(d=>`<span>${new Date(d+'T12:00:00').toLocaleDateString('en-IN',{weekday:'short'}).charAt(0)}</span>`).join('');
+
+  // Budget tab summary
+  const totalBudget=budgetCats.reduce((s,c)=>s+(S.budgets[c]||0),0);
+  const totalUsedAgainstBudget=budgetCats.reduce((s,c)=>s+expenses.filter(e=>e.cat===c).reduce((s2,e)=>s2+e.amount,0),0);
+  const totalLeft=totalBudget-totalUsedAgainstBudget;
+  $('budget-total').textContent=fmtINR(totalBudget);
+  $('budget-used').textContent=fmtINR(totalUsedAgainstBudget);
+  $('budget-left').textContent=(totalLeft>=0?'':'−')+fmtINR(Math.abs(totalLeft));
+
+  $('budgetList').innerHTML=budgetCats.map(c=>{
+    const cs=expenses.filter(e=>e.cat===c).reduce((s,e)=>s+e.amount,0);
+    const limit=S.budgets[c]||0;const pct=limit?Math.min(100,(cs/limit)*100):0;
+    const color=pct>90?'var(--red)':pct>70?'var(--amber)':'var(--green)';
+    return`<div class="budget-item"><div class="budget-row"><div class="budget-cat-name">${catMeta[c]?.icon||''} ${c}</div><div class="budget-amounts"><strong>${fmtINR(cs)}</strong> / ${fmtINR(limit)}</div></div><div class="budget-track"><div class="budget-fill" style="background:${color};width:${pct}%"></div></div></div>`;
+  }).join('');
+}
+
+// ── CALENDAR ──────────────────────────────────────────────
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelected=null;
+function changeMonth(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+
+function getItemsForDate(dateStr){
+  const items=[];
+  S.tasks.filter(t=>t.due===dateStr).forEach(t=>items.push({type:'task',label:t.text,color:'var(--indigo)',badge:catLabelMap[t.cat]||t.cat}));
+  S.reminders.filter(r=>r.datetime&&r.datetime.startsWith(dateStr)).forEach(r=>items.push({type:'reminder',label:r.title,color:'var(--saffron)',badge:r.cat}));
+  S.recurring.filter(r=>r.due===dateStr).forEach(r=>items.push({type:'recur',label:r.name,color:'var(--red)',badge:`${freqLabel[r.freq]} · ${fmtINR(r.amount)}`}));
+  return items;
+}
+
+function renderCalendar(){
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  $('calMonthLabel').textContent=`${monthNames[calMonth]} ${calYear}`;
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  const todayStr=today();
+  let html='';
+  // Prev month overflow
+  for(let i=firstDay-1;i>=0;i--){
+    const d=daysInPrev-i;
+    html+=`<div class="cal-day other-month"><span class="cal-day-num">${d}</span></div>`;
+  }
+  // Current month
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const items=getItemsForDate(dateStr);
+    const hasTasks=items.some(i=>i.type==='task');
+    const hasRem=items.some(i=>i.type==='reminder');
+    const hasRec=items.some(i=>i.type==='recur');
+    const isToday=dateStr===todayStr;
+    const isSel=dateStr===calSelected;
+    const dots=(hasTasks?'<div class="cal-dot dot-task"></div>':'')+(hasRem?'<div class="cal-dot dot-reminder"></div>':'')+(hasRec?'<div class="cal-dot dot-recur"></div>':'');
+    html+=`<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectCalDay('${dateStr}')">
+      <span class="cal-day-num">${d}</span>
+      <div class="cal-dots">${dots}</div>
+    </div>`;
+  }
+  // Next month overflow
+  const totalCells=Math.ceil((firstDay+daysInMonth)/7)*7;
+  for(let d=1;d<=totalCells-firstDay-daysInMonth;d++){
+    html+=`<div class="cal-day other-month"><span class="cal-day-num">${d}</span></div>`;
+  }
+  $('calDays').innerHTML=html;
+  if(calSelected) showCalDetail(calSelected);
+}
+
+function selectCalDay(dateStr){
+  calSelected=dateStr;
+  renderCalendar();
+  showCalDetail(dateStr);
+}
+
+function showCalDetail(dateStr){
+  const items=getItemsForDate(dateStr);
+  const detail=$('calDetail');
+  $('calDetailTitle').textContent=new Date(dateStr+'T12:00:00').toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+  if(!items.length){
+    $('calDetailItems').innerHTML=`<div style="text-align:center;padding:16px;color:var(--mist);font-size:13px">Nothing scheduled for this day</div>`;
+  } else {
+    $('calDetailItems').innerHTML=items.map(it=>`
+      <div class="cal-item">
+        <div class="cal-item-dot" style="background:${it.color}"></div>
+        <div style="flex:1">
+          <div class="cal-item-text">${it.label}</div>
+          <div class="cal-item-sub">${it.type==='task'?'Task':it.type==='reminder'?'Reminder':'Recurring Payment'}</div>
+        </div>
+        <span class="cal-item-badge" style="background:${it.color}22;color:${it.color}">${it.badge}</span>
+      </div>`).join('');
+  }
+  detail.style.display='block';
+}
+
+// ── RENDER ALL ────────────────────────────────────────────
+function renderAll(){renderTasks();renderReminders();renderExpenses();renderRecurring();renderFinance();}
+
+// ── HEADER DATE ───────────────────────────────────────────
+function setHeaderDate(){
+  const d=new Date();
+  $('hdrDay').textContent=d.getDate();
+  $('hdrMonYear').textContent=d.toLocaleDateString('en-IN',{month:'short',year:'numeric'});
+}
+
+// ── INIT ─────────────────────────────────────────────────
+$('exp-date').value=today();
+$('rec-due').value=today();
+document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('open');}));
+setHeaderDate();
+seed();
+renderAll();
+</script>
+</body>
+</html>
