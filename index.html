@@ -531,11 +531,10 @@ body { font-family:'DM Sans',sans-serif; background:var(--ivory); color:var(--in
 // ── STATE ─────────────────────────────────────────────────────
 // ── SUPABASE CONFIG ───────────────────────────────────────
 const SB_URL = 'https://zjwdsywxfxllnrsqupqm.supabase.co';
-const SB_KEY = 'sb_publishable_IdRAeHFlZZ3lJECvaLQN7w_GttyCX0u';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqd2RzeXd4ZnhsbG5yc3F1cHFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDE5NjQsImV4cCI6MjEwMDExNzk2NH0.luyYtNzVCqpkur0gRda7XQVQG0eQ-O-g9lGdatbXYmM';
 const TABLE  = 'hub_data';
 
 // Device ID — generated once, stored in localStorage forever
-// This acts as a simple "key" to identify your data in Supabase
 let DEVICE_ID = localStorage.getItem('hub-device-id');
 if(!DEVICE_ID){ DEVICE_ID='hub-'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('hub-device-id',DEVICE_ID); }
 
@@ -544,25 +543,33 @@ let S = {
   budgets:{Grocery:5000,Food:3000,Transport:2000,EMI:10000,Recharge:500,Health:2000,Other:2000}
 };
 
-// Always keep a local copy for instant loads
 function saveLocal(){ try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){} }
 try{const sv=localStorage.getItem('personal-hub-v2');if(sv)S={...S,...JSON.parse(sv)};}catch(e){}
 
-function setSyncBadge(state){
+function setSyncBadge(state,detail=''){
   const b=document.getElementById('syncBadge');
   if(!b)return;
   const states={
     connecting:['⏳ Connecting…','rgba(255,255,255,0.12)','rgba(255,255,255,0.7)'],
     synced:    ['☁️ Synced','rgba(34,197,94,0.2)','#4ade80'],
     saving:    ['🔄 Saving…','rgba(245,200,66,0.2)','#fbbf24'],
-    error:     ['⚠️ Offline','rgba(239,68,68,0.2)','#f87171'],
+    error:     ['⚠️ '+detail,'rgba(239,68,68,0.2)','#f87171'],
     restored:  ['✅ Restored','rgba(34,197,94,0.2)','#4ade80'],
   };
   const [label,bg,color]=states[state]||states.synced;
   b.textContent=label; b.style.background=bg; b.style.color=color;
+  if(state==='error') console.error('Sync error:',detail);
 }
 
-// Debounce so rapid changes don't flood Supabase
+function sbHeaders(){
+  return {
+    'Content-Type':'application/json',
+    'apikey': SB_KEY,
+    'Authorization': `Bearer ${SB_KEY}`,
+    'Prefer': 'resolution=merge-duplicates,return=minimal'
+  };
+}
+
 let syncTimer=null;
 function save(){
   saveLocal();
@@ -575,40 +582,102 @@ async function pushToSupabase(){
   try{
     const res=await fetch(`${SB_URL}/rest/v1/${TABLE}`,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'apikey':SB_KEY,
-        'Authorization':`Bearer ${SB_KEY}`,
-        'Prefer':'resolution=merge-duplicates'
-      },
-      body:JSON.stringify({device_id:DEVICE_ID,data:S,updated_at:new Date().toISOString()})
+      headers: sbHeaders(),
+      body:JSON.stringify({
+        device_id: DEVICE_ID,
+        data: S,
+        updated_at: new Date().toISOString()
+      })
     });
-    if(res.ok) setSyncBadge('synced');
-    else setSyncBadge('error');
-  }catch(e){ setSyncBadge('error'); }
+    if(res.ok){
+      setSyncBadge('synced');
+    } else {
+      const err=await res.text();
+      console.error('Supabase push error:',res.status,err);
+      // Table might not exist yet — show helpful message
+      if(res.status===404||err.includes('relation')||err.includes('does not exist')){
+        setSyncBadge('error','Table missing');
+        showTableSetupPrompt();
+      } else if(res.status===401||res.status===403){
+        setSyncBadge('error','Auth error');
+      } else {
+        setSyncBadge('error','Save failed');
+      }
+    }
+  }catch(e){
+    console.error('Supabase network error:',e);
+    setSyncBadge('error','Offline');
+  }
 }
 
 async function pullFromSupabase(){
   setSyncBadge('connecting');
   try{
-    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}?device_id=eq.${DEVICE_ID}&select=data`,{
-      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}?device_id=eq.${encodeURIComponent(DEVICE_ID)}&select=data,updated_at`,{
+      headers:{
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`
+      }
     });
     if(res.ok){
       const rows=await res.json();
       if(rows.length>0&&rows[0].data){
+        // Merge cloud data — cloud wins for all keys
         S={...S,...rows[0].data};
         saveLocal();
         renderAll();
         setSyncBadge('restored');
-        setTimeout(()=>setSyncBadge('synced'),2000);
+        setTimeout(()=>setSyncBadge('synced'),2500);
       } else {
-        // No cloud data yet — push local data up
+        // First time — no cloud data yet, push local up
         setSyncBadge('synced');
-        pushToSupabase();
+        await pushToSupabase();
       }
-    } else { setSyncBadge('error'); }
-  }catch(e){ setSyncBadge('error'); }
+    } else {
+      const err=await res.text();
+      console.error('Supabase pull error:',res.status,err);
+      if(err.includes('relation')||err.includes('does not exist')){
+        setSyncBadge('error','Table missing');
+        showTableSetupPrompt();
+      } else {
+        setSyncBadge('error','Load failed');
+      }
+    }
+  }catch(e){
+    console.error('Supabase pull network error:',e);
+    setSyncBadge('error','Offline');
+  }
+}
+
+function showTableSetupPrompt(){
+  // Only show once per session
+  if(window._tablePromptShown) return;
+  window._tablePromptShown=true;
+  const m=document.createElement('div');
+  m.className='modal-bg open';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚠️ One-time Setup Needed</div>
+    <p style="font-size:13px;color:var(--slate);line-height:1.6;margin-bottom:14px">The Supabase table hasn't been created yet. Run this SQL in your Supabase <strong>SQL Editor</strong>:</p>
+    <div style="background:#1a1a2e;border-radius:10px;padding:14px;font-family:'DM Sans',monospace;font-size:11px;color:#a5f3fc;line-height:1.7;margin-bottom:14px;overflow-x:auto;white-space:pre">create table hub_data (
+  device_id text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+
+alter table hub_data enable row level security;
+
+create policy "Allow all" on hub_data
+  for all using (true)
+  with check (true);</div>
+    <p style="font-size:12px;color:var(--mist);margin-bottom:16px">After running the SQL, reload this app and sync will work automatically.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="this.closest('.modal-bg').remove()">Dismiss</button>
+      <button class="btn-main" onclick="pullFromSupabase();this.closest('.modal-bg').remove()">Retry Now</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
 }
 
 const $=id=>document.getElementById(id);
