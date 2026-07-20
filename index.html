@@ -241,9 +241,12 @@ body { font-family:'DM Sans',sans-serif; background:var(--ivory); color:var(--in
       <div class="greeting">Hello 👋</div>
       <div class="greeting-name">Your <span>Personal Hub</span></div>
     </div>
-    <div class="header-date">
-      <strong id="hdrDay"></strong>
-      <span id="hdrMonYear"></span>
+    <div style="text-align:right">
+      <div id="syncBadge" style="font-size:10px;font-family:'Poppins',sans-serif;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);margin-bottom:4px;display:inline-block">⏳ Connecting…</div>
+      <div class="header-date" style="margin-top:2px">
+        <strong id="hdrDay"></strong>
+        <span id="hdrMonYear"></span>
+      </div>
     </div>
   </div>
   <div class="balance-strip">
@@ -362,7 +365,10 @@ body { font-family:'DM Sans',sans-serif; background:var(--ivory); color:var(--in
       </div>
       <div class="sec-header" style="margin-bottom:10px">
         <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--indigo)">Category Budgets</div>
-        <button class="quick-add-btn" onclick="openModal('budgetModal')" style="width:34px;height:34px;font-size:13px">⚙️</button>
+        <div style="display:flex;gap:6px">
+          <button class="quick-add-btn" onclick="showDeviceId()" style="width:34px;height:34px;font-size:13px">☁️</button>
+          <button class="quick-add-btn" onclick="openModal('budgetModal')" style="width:34px;height:34px;font-size:13px">⚙️</button>
+        </div>
       </div>
       <div id="budgetList"></div>
     </div>
@@ -523,12 +529,87 @@ body { font-family:'DM Sans',sans-serif; background:var(--ivory); color:var(--in
 
 <script>
 // ── STATE ─────────────────────────────────────────────────────
+// ── SUPABASE CONFIG ───────────────────────────────────────
+const SB_URL = 'https://zjwdsywxfxllnrsqupqm.supabase.co';
+const SB_KEY = 'sb_publishable_IdRAeHFlZZ3lJECvaLQN7w_GttyCX0u';
+const TABLE  = 'hub_data';
+
+// Device ID — generated once, stored in localStorage forever
+// This acts as a simple "key" to identify your data in Supabase
+let DEVICE_ID = localStorage.getItem('hub-device-id');
+if(!DEVICE_ID){ DEVICE_ID='hub-'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('hub-device-id',DEVICE_ID); }
+
 let S = {
   tasks:[],reminders:[],expenses:[],recurring:[],
   budgets:{Grocery:5000,Food:3000,Transport:2000,EMI:10000,Recharge:500,Health:2000,Other:2000}
 };
+
+// Always keep a local copy for instant loads
+function saveLocal(){ try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){} }
 try{const sv=localStorage.getItem('personal-hub-v2');if(sv)S={...S,...JSON.parse(sv)};}catch(e){}
-function save(){try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){}}
+
+function setSyncBadge(state){
+  const b=document.getElementById('syncBadge');
+  if(!b)return;
+  const states={
+    connecting:['⏳ Connecting…','rgba(255,255,255,0.12)','rgba(255,255,255,0.7)'],
+    synced:    ['☁️ Synced','rgba(34,197,94,0.2)','#4ade80'],
+    saving:    ['🔄 Saving…','rgba(245,200,66,0.2)','#fbbf24'],
+    error:     ['⚠️ Offline','rgba(239,68,68,0.2)','#f87171'],
+    restored:  ['✅ Restored','rgba(34,197,94,0.2)','#4ade80'],
+  };
+  const [label,bg,color]=states[state]||states.synced;
+  b.textContent=label; b.style.background=bg; b.style.color=color;
+}
+
+// Debounce so rapid changes don't flood Supabase
+let syncTimer=null;
+function save(){
+  saveLocal();
+  clearTimeout(syncTimer);
+  setSyncBadge('saving');
+  syncTimer=setTimeout(()=>pushToSupabase(),1200);
+}
+
+async function pushToSupabase(){
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}`,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`,
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body:JSON.stringify({device_id:DEVICE_ID,data:S,updated_at:new Date().toISOString()})
+    });
+    if(res.ok) setSyncBadge('synced');
+    else setSyncBadge('error');
+  }catch(e){ setSyncBadge('error'); }
+}
+
+async function pullFromSupabase(){
+  setSyncBadge('connecting');
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}?device_id=eq.${DEVICE_ID}&select=data`,{
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+    });
+    if(res.ok){
+      const rows=await res.json();
+      if(rows.length>0&&rows[0].data){
+        S={...S,...rows[0].data};
+        saveLocal();
+        renderAll();
+        setSyncBadge('restored');
+        setTimeout(()=>setSyncBadge('synced'),2000);
+      } else {
+        // No cloud data yet — push local data up
+        setSyncBadge('synced');
+        pushToSupabase();
+      }
+    } else { setSyncBadge('error'); }
+  }catch(e){ setSyncBadge('error'); }
+}
 
 const $=id=>document.getElementById(id);
 const today=()=>new Date().toISOString().split('T')[0];
@@ -918,6 +999,55 @@ document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e
 setHeaderDate();
 seed();
 renderAll();
+// Pull latest data from Supabase on load
+pullFromSupabase();
+
+// ── DEVICE ID MODAL (for restoring on new device) ────────
+function showDeviceId(){
+  const existing=document.getElementById('deviceIdModal');
+  if(existing){existing.classList.add('open');return;}
+  const m=document.createElement('div');
+  m.className='modal-bg open'; m.id='deviceIdModal';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">☁️ Cloud Backup</div>
+    <p style="font-size:13px;color:var(--mist);margin-bottom:16px;line-height:1.6">Your data auto-saves to Supabase. To restore on a new device, open the app and enter your Device ID below.</p>
+    <div style="background:var(--ivory);border-radius:10px;padding:12px 14px;border:1.5px dashed var(--fog);margin-bottom:16px">
+      <div style="font-size:10px;color:var(--mist);font-family:'Poppins',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Your Device ID</div>
+      <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);word-break:break-all;font-weight:600">${DEVICE_ID}</div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--indigo);margin-bottom:8px;font-family:'Poppins',sans-serif">Restore on a new device</div>
+    <input class="inp" id="restoreIdInput" placeholder="Paste your Device ID here…" style="margin-bottom:12px">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('deviceIdModal').classList.remove('open')">Close</button>
+      <button class="btn-main" onclick="restoreFromId()">Restore Data</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+  document.body.appendChild(m);
+}
+
+async function restoreFromId(){
+  const id=document.getElementById('restoreIdInput').value.trim();
+  if(!id)return;
+  setSyncBadge('connecting');
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}?device_id=eq.${encodeURIComponent(id)}&select=data`,{
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+    });
+    const rows=await res.json();
+    if(rows.length>0&&rows[0].data){
+      S={...S,...rows[0].data};
+      // Also update device ID so future saves go to the right record
+      localStorage.setItem('hub-device-id',id);
+      DEVICE_ID=id;
+      saveLocal(); renderAll();
+      setSyncBadge('restored');
+      document.getElementById('deviceIdModal').classList.remove('open');
+      setTimeout(()=>setSyncBadge('synced'),2000);
+    } else { alert('No data found for that Device ID. Please check and try again.'); setSyncBadge('error'); }
+  }catch(e){ alert('Could not connect to cloud. Check your internet.'); setSyncBadge('error'); }
+}
 </script>
 </body>
 </html>
