@@ -39,7 +39,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .greeting-name{color:#fff;font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;line-height:1.1;margin-top:2px}
 .greeting-name span{color:var(--gold)}
 .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.sync-badge{font-size:10px;font-family:'Poppins',sans-serif;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);cursor:pointer;white-space:nowrap}
+
 .header-actions{display:flex;gap:6px}
 .hdr-btn{background:rgba(255,255,255,0.12);border:none;color:white;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
 .balance-strip{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:12px 16px;display:flex}
@@ -301,11 +301,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="greeting-name">Vishal's <span>Personal Hub</span></div>
     </div>
     <div class="header-right">
-      <div id="syncBadge" class="sync-badge" onclick="showDebugPanel()">⏳ Connecting…</div>
       <div class="header-actions">
         <button class="hdr-btn" onclick="toggleSearch()" title="Search">🔍</button>
+        <button class="hdr-btn" onclick="showBackupModal()" title="Backup">💾</button>
         <button class="hdr-btn" onclick="toggleDark()" id="darkBtn" title="Dark mode">🌙</button>
-        <button class="hdr-btn" onclick="showDeviceId()" title="Sync">☁️</button>
       </div>
     </div>
   </div>
@@ -397,7 +396,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
   <div class="view" id="view-expenses">
     <div class="sec-header">
       <div><div class="sec-title">Expenses 💸</div><div class="sec-sub" id="exp-sub">This month</div></div>
-      <button class="qa-btn" onclick="openModal('expenseModal')" style="width:34px;height:34px;font-size:18px">+</button>
+      <div style="display:flex;gap:6px">
+        <button class="qa-btn" onclick="showPhotoModal()" style="width:34px;height:34px;font-size:16px" title="Scan receipt or screenshot">📷</button>
+        <button class="qa-btn" onclick="showSMSModal()" style="width:34px;height:34px;font-size:16px" title="Add from SMS">📱</button>
+        <button class="qa-btn" onclick="openModal('expenseModal')" style="width:34px;height:34px;font-size:18px">+</button>
+      </div>
     </div>
     <div class="filter-row">
       <div class="fpill active" onclick="filterExp('all',this)">All</div>
@@ -462,7 +465,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
       <div class="sec-header" style="margin-bottom:8px">
         <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--indigo)">Category Budgets</div>
         <div style="display:flex;gap:6px">
-          <button class="qa-btn" onclick="showDeviceId()" style="width:32px;height:32px;font-size:12px">☁️</button>
           <button class="qa-btn" onclick="openModal('budgetModal')" style="width:32px;height:32px;font-size:12px">⚙️</button>
         </div>
       </div>
@@ -611,16 +613,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 </div>
 
 <script>
-// ── SUPABASE ─────────────────────────────────────────────
-const SB_URL='https://zjwdsywxfxllnrsqupqm.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqd2RzeXd4ZnhsbG5yc3F1cHFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDE5NjQsImV4cCI6MjEwMDExNzk2NH0.luyYtNzVCqpkur0gRda7XQVQG0eQ-O-g9lGdatbXYmM';
-const TABLE='hub_data';
-let DEVICE_ID=localStorage.getItem('hub-device-id');
-
 // ── STATE ────────────────────────────────────────────────
 let S={tasks:[],reminders:[],expenses:[],recurring:[],notes:[],
   budgets:{Grocery:5000,Food:3000,Transport:2000,EMI:10000,Recharge:500,Health:2000,Other:2000}};
-function saveLocal(){try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){}}
+function save(){try{localStorage.setItem('personal-hub-v2',JSON.stringify(S));}catch(e){}}
 try{const sv=localStorage.getItem('personal-hub-v2');if(sv)S={...S,...JSON.parse(sv)};}catch(e){}
 
 // ── HELPERS ──────────────────────────────────────────────
@@ -689,70 +685,61 @@ function doSearch(q){
   el.style.display='block';
 }
 
-// ── SYNC / SUPABASE ──────────────────────────────────────
-function setSyncBadge(state,detail=''){
-  const b=$('syncBadge');if(!b)return;
-  const map={connecting:['⏳ Connecting…','rgba(255,255,255,0.12)','rgba(255,255,255,0.7)'],synced:['☁️ Synced','rgba(34,197,94,0.2)','#4ade80'],saving:['🔄 Saving…','rgba(245,200,66,0.2)','#fbbf24'],error:['⚠️ '+(detail||'Error'),'rgba(239,68,68,0.2)','#f87171'],restored:['✅ Restored','rgba(34,197,94,0.2)','#4ade80']};
-  const [label,bg,color]=map[state]||map.synced;
-  b.textContent=label;b.style.background=bg;b.style.color=color;
+// ── EXPORT / IMPORT BACKUP ──────────────────────────────
+function exportData(){
+  const json=JSON.stringify(S,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`personal-hub-backup-${today()}.json`;
+  a.click();URL.revokeObjectURL(url);
+  showToast('✅ Backup downloaded!');
 }
-const debugLogs=[];
-function addLog(op,status,msg){
-  debugLogs.unshift(`[${new Date().toLocaleTimeString()}] ${op} → ${status}: ${msg}`);
-  if(debugLogs.length>20)debugLogs.pop();
-  const el=$('debugLogContent');
-  if(el)el.innerHTML=debugLogs.map(l=>`<div style="padding:3px 0;border-bottom:1px solid #333;font-size:11px;word-break:break-all">${l}</div>`).join('');
+function importData(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const parsed=JSON.parse(ev.target.result);
+        if(!parsed.tasks&&!parsed.expenses){alert('Invalid backup file');return;}
+        S={...S,...parsed};save();renderAll();
+        showToast('✅ Data restored successfully!');
+      }catch(e){alert('Could not read backup file');}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
-let syncTimer=null;
-function save(){saveLocal();clearTimeout(syncTimer);setSyncBadge('saving');syncTimer=setTimeout(pushToSupabase,1200);}
-async function pushToSupabase(){
-  if(!DEVICE_ID){setSyncBadge('error','No key');return;}
-  try{
-    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}`,{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({device_id:DEVICE_ID,data:S,updated_at:new Date().toISOString()})});
-    const txt=await res.text();addLog('PUSH',res.status,txt.slice(0,80)||'ok');
-    if(res.ok||res.status===201||res.status===204)setSyncBadge('synced');
-    else if(res.status===401||res.status===403)setSyncBadge('error','Auth error');
-    else if(txt.includes('does not exist'))setSyncBadge('error','Table missing');
-    else setSyncBadge('error','Push '+res.status);
-  }catch(e){addLog('PUSH','ERR',e.message);setSyncBadge('error','Offline');}
-}
-async function pullFromSupabase(){
-  if(!DEVICE_ID){setSyncBadge('error','No key');return;}
-  setSyncBadge('connecting');
-  try{
-    const res=await fetch(`${SB_URL}/rest/v1/${TABLE}?device_id=eq.${encodeURIComponent(DEVICE_ID)}&select=data`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});
-    const txt=await res.text();addLog('PULL',res.status,txt.slice(0,120));
-    if(!res.ok){setSyncBadge('error','Pull '+res.status);return;}
-    const rows=JSON.parse(txt);
-    if(rows.length>0&&rows[0].data){S={...S,...rows[0].data};saveLocal();renderAll();setSyncBadge('restored');setTimeout(()=>setSyncBadge('synced'),2500);}
-    else{setSyncBadge('synced');await pushToSupabase();}
-  }catch(e){addLog('PULL','ERR',e.message);setSyncBadge('error','Offline');}
-}
-function initSyncKey(){if(DEVICE_ID){pullFromSupabase();return;}showSyncSetup();}
-function showSyncSetup(){
-  const m=document.createElement('div');m.className='modal-bg open';m.id='syncSetupModal';
-  m.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-title">☁️ Set Up Cloud Sync</div><p style="font-size:13px;color:var(--slate);line-height:1.6;margin-bottom:14px">Choose a <strong>Sync Key</strong> — use the same key on all your devices to share data.</p><div class="form-field"><label class="form-lbl">Your Sync Key</label><input class="inp" id="syncKeyInput" placeholder="e.g. vishal-hub-2024" style="font-weight:700;letter-spacing:1px"><div style="font-size:11px;color:var(--mist);margin-top:4px">Use the same key on every device. No spaces.</div></div><div class="modal-actions"><button class="btn-cancel" onclick="skipSyncSetup()">Skip</button><button class="btn-main" onclick="saveSyncKey()">Save & Sync</button></div></div>`;
+function showBackupModal(){
+  const existing=document.getElementById('backupModal');
+  if(existing){existing.classList.add('open');return;}
+  const m=document.createElement('div');m.className='modal-bg open';m.id='backupModal';
+  const size=(JSON.stringify(S).length/1024).toFixed(1);
+  const counts=`${S.tasks.length} tasks · ${S.expenses.length} expenses · ${S.reminders.length} reminders · ${S.recurring.length} recurring · ${S.notes.length} notes`;
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💾 Backup & Restore</div>
+    <div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--mist);font-family:'Poppins',sans-serif;font-weight:600;text-transform:uppercase;margin-bottom:6px">Your Data</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${counts}</div>
+      <div style="font-size:11px;color:var(--mist)">Storage used: ${size} KB of localStorage</div>
+    </div>
+    <p style="font-size:13px;color:var(--slate);line-height:1.6;margin-bottom:16px">
+      Your data is saved locally on this device. Export a backup to iCloud Drive, Google Drive, or WhatsApp to yourself — then restore it anytime on any device.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-main" onclick="exportData();document.getElementById('backupModal').classList.remove('open')">⬇️ Export Backup (JSON)</button>
+      <button class="btn-main" style="background:var(--indigo)" onclick="importData();document.getElementById('backupModal').classList.remove('open')">⬆️ Restore from Backup</button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn-cancel" style="width:100%" onclick="document.getElementById('backupModal').classList.remove('open')">Close</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
   document.body.appendChild(m);
-}
-function skipSyncSetup(){DEVICE_ID='hub-'+Math.random().toString(36).slice(2);localStorage.setItem('hub-device-id',DEVICE_ID);document.getElementById('syncSetupModal')?.remove();setSyncBadge('synced');pushToSupabase();}
-function saveSyncKey(){const key=($('syncKeyInput')?.value||'').trim().replace(/\s+/g,'-');if(!key){alert('Please enter a sync key');return;}DEVICE_ID=key;localStorage.setItem('hub-device-id',DEVICE_ID);document.getElementById('syncSetupModal')?.remove();pullFromSupabase();}
-function showDeviceId(){
-  const existing=$('deviceIdModal');if(existing){existing.classList.add('open');return;}
-  const m=document.createElement('div');m.className='modal-bg open';m.id='deviceIdModal';
-  m.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-title">☁️ Cloud Sync</div><div class="form-field"><label class="form-lbl">Current Sync Key</label><div style="background:var(--surface2);border-radius:10px;padding:11px 13px;border:1.5px dashed var(--fog);font-weight:700;word-break:break-all">${DEVICE_ID||'Not set'}</div></div><div class="form-field" style="margin-top:12px"><label class="form-lbl">Change / Restore Key</label><input class="inp" id="restoreIdInput" placeholder="Enter sync key…"><div style="font-size:11px;color:var(--mist);margin-top:4px">⚠️ Replaces local data with cloud data for that key.</div></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn-main" style="font-size:12px;padding:9px;background:var(--indigo)" onclick="pullFromSupabase()">↓ Pull Now</button><button class="btn-main" style="font-size:12px;padding:9px" onclick="pushToSupabase()">↑ Push Now</button></div><div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('deviceIdModal').classList.remove('open')">Close</button><button class="btn-main" onclick="restoreFromId()">Switch Key</button></div></div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});document.body.appendChild(m);
-}
-async function restoreFromId(){
-  const id=($('restoreIdInput')?.value||'').trim().replace(/\s+/g,'-');
-  if(!id){alert('Enter a sync key');return;}
-  DEVICE_ID=id;localStorage.setItem('hub-device-id',id);
-  $('deviceIdModal')?.classList.remove('open');await pullFromSupabase();
-}
-function showDebugPanel(){
-  const existing=$('debugModal');if(existing){existing.classList.add('open');return;}
-  const m=document.createElement('div');m.className='modal-bg open';m.id='debugModal';
-  m.innerHTML=`<div class="modal"><div class="modal-handle"></div><div class="modal-title">🔍 Sync Debug</div><div style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;font-weight:700;word-break:break-all;margin-bottom:12px">Key: ${DEVICE_ID||'NOT SET'}</div><div style="display:flex;gap:7px;margin-bottom:12px"><button class="btn-main" style="font-size:12px;padding:9px" onclick="pullFromSupabase()">↓ Pull</button><button class="btn-main" style="font-size:12px;padding:9px;background:var(--indigo)" onclick="pushToSupabase()">↑ Push</button><button class="btn-cancel" style="font-size:12px;padding:9px" onclick="debugLogs.length=0;$('debugLogContent').innerHTML=''">Clear</button></div><div style="background:#1a1a2e;border-radius:10px;padding:12px;color:#a5f3fc;font-family:monospace;min-height:80px;max-height:200px;overflow-y:auto" id="debugLogContent">${debugLogs.length?debugLogs.map(l=>`<div style="padding:3px 0;border-bottom:1px solid #333;font-size:11px;word-break:break-all">${l}</div>`).join(''):'<div style="color:#666;font-size:11px">Tap Pull or Push to test</div>'}</div><div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('debugModal').classList.remove('open')">Close</button></div></div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});document.body.appendChild(m);
 }
 
 // ── NAVIGATION ───────────────────────────────────────────
@@ -970,7 +957,7 @@ function addNote(){
   setTimeout(()=>{const el=document.querySelector('.note-card-title');if(el)el.focus();},100);
 }
 function deleteNote(id){S.notes=S.notes.filter(n=>n.id!==id);save();renderNotes();}
-function updateNote(id,field,val){const n=S.notes.find(n=>n.id===id);if(n){n[field]=val;saveLocal();clearTimeout(syncTimer);syncTimer=setTimeout(pushToSupabase,3000);}}
+function updateNote(id,field,val){const n=S.notes.find(n=>n.id===id);if(n){n[field]=val;save();}}
 function renderNotes(){
   if($('notes-sub'))$('notes-sub').textContent=`${S.notes.length} note${S.notes.length!==1?'s':''}`;
   if(!S.notes.length){$('noteList').innerHTML=`<div class="empty-state"><div class="empty-emoji">📝</div><div class="empty-text">No notes yet<br>Tap + to create one</div></div>`;return;}
@@ -1047,14 +1034,410 @@ function renderAll(){
   renderDashboard();renderTasks();renderReminders();renderExpenses();renderRecurring();renderFinance();renderNotes();
 }
 
-// ── INIT ─────────────────────────────────────────────────
+// ── PHOTO / RECEIPT SCANNER ──────────────────────────────
+const CLAUDE_KEY = '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';
+
+function showPhotoModal() {
+  const existing = document.getElementById('photoModal');
+  if(existing){existing.classList.add('open');return;}
+  const m = document.createElement('div');
+  m.className='modal-bg open'; m.id='photoModal';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📷 Scan Receipt or Screenshot</div>
+    <p style="font-size:13px;color:var(--mist);line-height:1.6;margin-bottom:16px">
+      Take a photo of a receipt, or upload a screenshot of a bank SMS, UPI payment, or any bill. AI will extract the details automatically.
+    </p>
+    <!-- Upload area -->
+    <div id="photoDropZone" onclick="triggerPhotoInput('any')" style="border:2px dashed var(--fog);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px">
+      <div style="font-size:40px;margin-bottom:8px">🖼️</div>
+      <div style="font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:var(--indigo);margin-bottom:4px">Tap to upload screenshot</div>
+      <div style="font-size:11px;color:var(--mist)">Bank SMS · UPI · Receipt · Bill · Statement</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-main" style="background:var(--indigo);flex:1" onclick="triggerPhotoInput('camera')">📸 Take Photo</button>
+      <button class="btn-main" style="flex:1" onclick="triggerPhotoInput('gallery')">🖼️ Gallery</button>
+    </div>
+    <!-- Hidden inputs -->
+    <input type="file" id="photoInputCamera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelected(this)">
+    <input type="file" id="photoInputGallery" accept="image/*" style="display:none" onchange="handlePhotoSelected(this)">
+    <!-- Preview + result area -->
+    <div id="photoPreviewWrap" style="display:none">
+      <img id="photoPreview" style="width:100%;border-radius:12px;margin-bottom:12px;max-height:200px;object-fit:cover">
+      <div id="photoStatus" style="text-align:center;padding:16px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:var(--mist)">🤖 Analyzing image…</div>
+      <div id="photoResult" style="display:none"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('photoModal').classList.remove('open');resetPhotoModal()">Close</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m){m.classList.remove('open');resetPhotoModal();}});
+  document.body.appendChild(m);
+}
+
+function triggerPhotoInput(type) {
+  if(type==='camera') document.getElementById('photoInputCamera')?.click();
+  else document.getElementById('photoInputGallery')?.click();
+}
+
+function resetPhotoModal() {
+  const wrap = document.getElementById('photoPreviewWrap');
+  if(wrap) wrap.style.display='none';
+  const result = document.getElementById('photoResult');
+  if(result){result.style.display='none';result.innerHTML='';}
+  const status = document.getElementById('photoStatus');
+  if(status) status.textContent='🤖 Analyzing image…';
+}
+
+async function handlePhotoSelected(input) {
+  const file = input.files[0];
+  if(!file) return;
+
+  // Show preview
+  const wrap = document.getElementById('photoPreviewWrap');
+  const preview = document.getElementById('photoPreview');
+  const status = document.getElementById('photoStatus');
+  const result = document.getElementById('photoResult');
+  wrap.style.display='block';
+  result.style.display='none';
+  result.innerHTML='';
+  status.style.display='block';
+  status.textContent='🤖 Analyzing image…';
+
+  // Convert to base64
+  const base64 = await new Promise((res,rej)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>res(reader.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+
+  // Show image preview
+  preview.src = `data:${file.type};base64,${base64}`;
+
+  // Call Claude Vision API
+  try {
+    status.textContent='🤖 Reading transaction details…';
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': CLAUDE_KEY,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:500,
+        messages:[{
+          role:'user',
+          content:[
+            {
+              type:'image',
+              source:{type:'base64',media_type:file.type,data:base64}
+            },
+            {
+              type:'text',
+              text:`Analyze this image. It could be a bank SMS screenshot, UPI payment screenshot, receipt, or bill.
+Extract transaction details and respond ONLY with a JSON object like this (no markdown, no explanation):
+{
+  "found": true,
+  "type": "expense",
+  "amount": 1840,
+  "name": "Big Bazaar",
+  "category": "Grocery",
+  "date": "2026-06-30",
+  "bank": "HDFC",
+  "confidence": "high"
+}
+
+Rules:
+- type: "expense" or "income"
+- category must be one of: Grocery, Food, Transport, EMI, Recharge, Health, Salary, Other
+- date format: YYYY-MM-DD (use today if not visible)
+- amount: number only, no currency symbol
+- If no transaction found, return {"found": false}
+- Today's date is ${today()}`
+            }
+          ]
+        }]
+      })
+    });
+
+    if(!response.ok){
+      const err = await response.text();
+      throw new Error(`API error ${response.status}: ${err}`);
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    } catch(e) {
+      // Try extracting JSON from response
+      const match = text.match(/\{[\s\S]*\}/);
+      if(match) parsed = JSON.parse(match[0]);
+      else throw new Error('Could not parse AI response');
+    }
+
+    status.style.display='none';
+
+    if(!parsed.found){
+      result.style.display='block';
+      result.innerHTML=`<div style="background:var(--red-light);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:24px;margin-bottom:6px">🤔</div>
+        <div style="font-size:13px;font-weight:600;color:var(--red)">No transaction found</div>
+        <div style="font-size:11px;color:var(--mist);margin-top:4px">Try a clearer photo or a different screenshot</div>
+      </div>`;
+      return;
+    }
+
+    // Show confirmation card
+    showPhotoConfirm(parsed);
+
+  } catch(e) {
+    status.textContent='';
+    result.style.display='block';
+    result.innerHTML=`<div style="background:var(--red-light);border-radius:12px;padding:14px;text-align:center">
+      <div style="font-size:13px;font-weight:600;color:var(--red)">❌ ${e.message.includes('401')?'Invalid API key':'Could not analyze image'}</div>
+      <div style="font-size:11px;color:var(--mist);margin-top:4px">${e.message}</div>
+    </div>`;
+  }
+}
+
+function showPhotoConfirm(parsed) {
+  // Close photo modal
+  document.getElementById('photoModal')?.classList.remove('open');
+
+  const m = document.createElement('div');
+  m.className='modal-bg open'; m.id='photoConfirmModal';
+  const isIncome = parsed.type==='income';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✅ Transaction Found</div>
+    <!-- Summary card -->
+    <div style="background:${isIncome?'var(--green-light)':'var(--red-light)'};border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:11px;color:var(--mist);font-family:'Poppins',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">
+        ${parsed.bank||'Transaction'} · ${isIncome?'Credit':'Debit'} · ${parsed.confidence==='high'?'🟢 High confidence':'🟡 Please verify'}
+      </div>
+      <div style="font-family:'Poppins',sans-serif;font-size:32px;font-weight:800;color:${isIncome?'var(--green)':'var(--red)'}">
+        ${isIncome?'+':'−'}₹${Number(parsed.amount).toLocaleString('en-IN')}
+      </div>
+      <div style="font-size:14px;font-weight:600;margin-top:4px">${parsed.name}</div>
+    </div>
+    <!-- Editable fields -->
+    <div class="form-field">
+      <label class="form-lbl">Description</label>
+      <input class="inp" id="pc-name" value="${parsed.name||''}">
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="form-field" style="flex:1">
+        <label class="form-lbl">Amount (₹)</label>
+        <input class="inp" type="number" id="pc-amount" value="${parsed.amount||''}">
+      </div>
+      <div class="form-field" style="flex:1">
+        <label class="form-lbl">Date</label>
+        <input class="inp" type="date" id="pc-date" value="${parsed.date||today()}">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-lbl">Category</label>
+      <select class="inp" id="pc-cat">
+        ${['Grocery','Food','Transport','EMI','Recharge','Health','Salary','Other'].map(c=>`<option value="${c}" ${c===parsed.category?'selected':''}>${catMeta[c]?.icon||''} ${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('photoConfirmModal').remove()">Discard</button>
+      <button class="btn-main" onclick="confirmPhotoAdd('${parsed.type}')">Add to Expenses</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+
+function confirmPhotoAdd(type) {
+  const name = document.getElementById('pc-name')?.value.trim()||'Transaction';
+  const amount = parseFloat(document.getElementById('pc-amount')?.value||0);
+  const date = document.getElementById('pc-date')?.value||today();
+  const cat = document.getElementById('pc-cat')?.value||'Other';
+  if(!amount||amount<=0){alert('Please enter a valid amount');return;}
+  S.expenses.unshift({id:Date.now(),name,amount,cat,type,date});
+  save();renderAll();
+  document.getElementById('photoConfirmModal')?.remove();
+  showToast(`✅ ${type==='income'?'+':'−'}₹${amount.toLocaleString('en-IN')} added!`);
+}
+
+// ── SMS PARSER ───────────────────────────────────────────
+// Parses HDFC, SBI, ICICI bank SMS formats
+const smsPatterns = [
+  // HDFC Debit
+  { bank:'HDFC', type:'expense', regex:/(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*(?:debited|spent|used|withdrawn)/i, merchant:/(?:at|@|to)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.)/i },
+  // HDFC Credit
+  { bank:'HDFC', type:'income', regex:/(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*credited/i, merchant:/(?:from|by)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.)/i },
+  // HDFC UPI
+  { bank:'HDFC', type:'expense', regex:/(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*(?:debited|paid)\s*(?:via\s*UPI)?/i, merchant:/(?:to|@)\s*([A-Za-z0-9 @.\-]+?)(?:\s+on|\s+Ref|\s+\d|$)/i },
+  // SBI Debit
+  { bank:'SBI', type:'expense', regex:/(?:Rs\.?|INR)\s*([\d,]+\.?\d*)\s*(?:debited|withdrawn|spent)/i, merchant:/(?:at|to|@)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.|$)/i },
+  // SBI Credit
+  { bank:'SBI', type:'income', regex:/(?:Rs\.?|INR)\s*([\d,]+\.?\d*)\s*credited/i, merchant:/(?:from|by)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.|$)/i },
+  // ICICI Debit
+  { bank:'ICICI', type:'expense', regex:/(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*(?:debited|spent|used)/i, merchant:/(?:at|to|@)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.|$)/i },
+  // ICICI Credit
+  { bank:'ICICI', type:'income', regex:/(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*credited/i, merchant:/(?:from|by)\s+([A-Za-z0-9 &\-]+?)(?:\s+on|\s+\d|\.|$)/i },
+  // Generic UPI (works for all banks)
+  { bank:'UPI', type:'expense', regex:/(?:paid|sent|debited)\s+(?:INR|Rs\.?)?\s*([\d,]+\.?\d*)/i, merchant:/(?:to|@)\s*([A-Za-z0-9 @.\-]+?)(?:\s+via|\s+on|\s+Ref|\s+\d|$)/i },
+  { bank:'UPI', type:'income', regex:/(?:received|credited)\s+(?:INR|Rs\.?)?\s*([\d,]+\.?\d*)/i, merchant:/(?:from)\s+([A-Za-z0-9 @.\-]+?)(?:\s+via|\s+on|\s+\d|$)/i },
+];
+
+// Guess expense category from merchant name
+function guessCat(merchant, type) {
+  if(type==='income') return 'Salary';
+  const m = merchant.toLowerCase();
+  if(/swiggy|zomato|pizza|burger|kfc|mcdonald|domino|restaurant|cafe|food|biryani|hotel/.test(m)) return 'Food';
+  if(/bigbazaar|dmart|grocer|kirana|supermart|reliance fresh|more|nature.s basket|vegetable|fruit/.test(m)) return 'Grocery';
+  if(/uber|ola|rapido|metro|bus|auto|petrol|fuel|bpcl|hpcl|iocl|parking/.test(m)) return 'Transport';
+  if(/emi|loan|mortgage|bajaj|hdfc home|sbi home/.test(m)) return 'EMI';
+  if(/jio|airtel|vi |vodafone|bsnl|recharge|broadband/.test(m)) return 'Recharge';
+  if(/apollo|medplus|pharma|hospital|clinic|doctor|health|medical/.test(m)) return 'Health';
+  return 'Other';
+}
+
+function parseSMS(smsText) {
+  for(const p of smsPatterns) {
+    const amtMatch = smsText.match(p.regex);
+    if(!amtMatch) continue;
+    const amount = parseFloat(amtMatch[1].replace(/,/g,''));
+    if(isNaN(amount)||amount<=0) continue;
+    const merchantMatch = smsText.match(p.merchant);
+    const merchant = merchantMatch ? merchantMatch[1].trim().replace(/\s+/g,' ') : p.bank+' Transaction';
+    const cat = guessCat(merchant, p.type);
+    return { amount, name:merchant, type:p.type, cat, bank:p.bank, raw:smsText };
+  }
+  return null;
+}
+
+function addFromSMS(parsed) {
+  if(!parsed) return false;
+  S.expenses.unshift({ id:Date.now(), name:parsed.name, amount:parsed.amount, cat:parsed.cat, type:parsed.type, date:today() });
+  save(); renderAll();
+  return true;
+}
+
+// ── URL HANDLER (called by iOS Shortcut) ─────────────────
+// URL format: https://yourapp.netlify.app/?sms=ENCODED_SMS_TEXT
+function handleURLParams() {
+  const params = new URLSearchParams(window.location.search);
+  const sms = params.get('sms');
+  if(!sms) return;
+  const decoded = decodeURIComponent(sms);
+  const parsed = parseSMS(decoded);
+  if(parsed) {
+    showSMSConfirm(parsed);
+    // Clean URL without reload
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+function showSMSConfirm(parsed) {
+  const existing = document.getElementById('smsConfirmModal');
+  if(existing) existing.remove();
+  const m = document.createElement('div');
+  m.className='modal-bg open'; m.id='smsConfirmModal';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📱 Transaction Detected</div>
+    <div style="background:${parsed.type==='income'?'var(--green-light)':'var(--red-light)'};border-radius:12px;padding:14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:11px;color:var(--mist);font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">${parsed.bank} · ${parsed.type==='income'?'Credit':'Debit'}</div>
+      <div style="font-family:'Poppins',sans-serif;font-size:28px;font-weight:800;color:${parsed.type==='income'?'var(--green)':'var(--red)'}">${parsed.type==='income'?'+':'−'}₹${parsed.amount.toLocaleString('en-IN')}</div>
+      <div style="font-size:13px;font-weight:600;margin-top:4px">${parsed.name}</div>
+    </div>
+    <div class="form-field"><label class="form-lbl">Description</label><input class="inp" id="sms-name" value="${parsed.name}"></div>
+    <div class="form-field"><label class="form-lbl">Category</label>
+      <select class="inp" id="sms-cat">
+        ${['Grocery','Food','Transport','EMI','Recharge','Health','Salary','Other'].map(c=>`<option value="${c}" ${c===parsed.cat?'selected':''}>${catMeta[c]?.icon||''} ${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('smsConfirmModal').remove()">Ignore</button>
+      <button class="btn-main" onclick="confirmSMSAdd('${parsed.type}',${parsed.amount})">Add to Expenses</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+}
+
+function confirmSMSAdd(type, amount) {
+  const name = document.getElementById('sms-name')?.value.trim() || 'Bank Transaction';
+  const cat = document.getElementById('sms-cat')?.value || 'Other';
+  S.expenses.unshift({ id:Date.now(), name, amount, cat, type, date:today() });
+  save(); renderAll();
+  document.getElementById('smsConfirmModal')?.remove();
+  // Show brief toast
+  showToast(`✅ ${type==='income'?'+':'−'}₹${amount.toLocaleString('en-IN')} added!`);
+}
+
+// ── MANUAL SMS PASTE MODAL ────────────────────────────────
+function showSMSModal() {
+  const existing = document.getElementById('smsModal');
+  if(existing){existing.classList.add('open');return;}
+  const m = document.createElement('div');
+  m.className='modal-bg open'; m.id='smsModal';
+  m.innerHTML=`<div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📱 Paste Bank SMS</div>
+    <p style="font-size:13px;color:var(--mist);line-height:1.6;margin-bottom:14px">Copy any HDFC, SBI or ICICI transaction SMS and paste it below. The app will auto-extract the amount and merchant.</p>
+    <div class="form-field">
+      <label class="form-lbl">SMS Text</label>
+      <textarea class="inp" id="smsText" rows="5" placeholder="e.g. Your A/c XX1234 debited INR 1,840.00 at BIG BAZAAR on 14-08-26..." style="resize:vertical;font-size:13px;line-height:1.5"></textarea>
+    </div>
+    <div id="sms-parse-result" style="display:none;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('smsModal').classList.remove('open')">Cancel</button>
+      <button class="btn-main" style="background:var(--indigo)" onclick="testParseSMS()">Parse SMS</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+  document.body.appendChild(m);
+}
+
+function testParseSMS() {
+  const txt = document.getElementById('smsText')?.value.trim();
+  if(!txt){alert('Please paste an SMS first');return;}
+  const parsed = parseSMS(txt);
+  const res = document.getElementById('sms-parse-result');
+  if(!parsed){
+    res.style.display='block';
+    res.innerHTML=`<div style="background:var(--red-light);border-radius:10px;padding:12px;font-size:13px;color:var(--red)">❌ Couldn't parse this SMS. Try copying the full message.</div>`;
+    return;
+  }
+  res.style.display='block';
+  res.innerHTML=`<div style="background:var(--green-light);border-radius:10px;padding:12px">
+    <div style="font-size:11px;color:var(--mist);margin-bottom:6px;font-family:'Poppins',sans-serif;font-weight:600;text-transform:uppercase">Parsed ✅</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:14px;font-weight:700">${parsed.name}</div><div style="font-size:11px;color:var(--mist)">${parsed.cat} · ${parsed.bank}</div></div>
+      <div style="font-family:'Poppins',sans-serif;font-size:18px;font-weight:800;color:${parsed.type==='income'?'var(--green)':'var(--red)'}">${parsed.type==='income'?'+':'−'}₹${parsed.amount.toLocaleString('en-IN')}</div>
+    </div>
+    <button class="btn-main" style="width:100%;margin-top:10px" onclick="document.getElementById('smsModal').classList.remove('open');showSMSConfirm(window._lastParsed)">Confirm & Add</button>
+  </div>`;
+  window._lastParsed = parsed;
+}
+
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-family:Poppins,sans-serif;font-weight:600;z-index:999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2500);
+}
 $('exp-date').value=today();$('rec-due').value=today();
 document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('open');}));
 // Set header date
 const nd=new Date();
 document.querySelector('.greeting').textContent=nd.getHours()<12?'Good Morning 🌅':nd.getHours()<17?'Good Afternoon ☀️':'Good Evening 🌙';
 seed();renderAll();
-initSyncKey();
 </script>
 </body>
 </html>
